@@ -41,19 +41,13 @@
       no_log: true
       ignore_errors: yes
       register: su_result
-      tags:
-       - check-pass     
-    
+
     - name: Success Login {{ username }}  
       debug:
         msg: "{{ username }} login success"
       when: su_result.stdout ==  username 
-      tags:
-       - check-pass
     
     - name: Failure Login {{ username }}
       debug:
         msg: "{{ username }} login failure"
       when: "'Authentication failure' in su_result.stderr"
-      tags:
-        - check-pass
