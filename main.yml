@@ -24,10 +24,10 @@
         create: true
       delegate_to: localhost
 
-    - name: never expire password
+    - name: Set never expire password
       shell: "chage -I -1 -m 0 -M 99999 -E -1 {{ username }}"
  
-    - name: check user expire
+    - name: Check user expire
       shell: chage -l "{{ username }}"
       register: expire
     
