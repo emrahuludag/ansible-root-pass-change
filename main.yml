@@ -1,0 +1,59 @@
+---
+- hosts: servers
+  vars:
+   salt: "{{ lookup('pipe', 'openssl rand -hex 4') }}"
+  tasks:
+
+    - name: Change {{ username }} password
+      user:
+        name: "{{ username }}"
+        update_password: always
+        password: "{{ password | password_hash('sha512',salt) }}"
+
+    - name: Create CSV File Header
+      lineinfile:
+        path: "./passwords.csv"
+        line: "Date,Hostname,IP,Username,Password"
+        create: true
+      delegate_to: localhost
+
+    - name: Save {{ username }} new password to local file
+      lineinfile:
+        path: "./passwords.csv"
+        line: "{{ ansible_date_time.date }},{{ ansible_facts.hostname }},{{ inventory_hostname }},{{ username }},{{ password }}"
+        create: true
+      delegate_to: localhost
+
+    - name: never expire password
+      shell: "chage -I -1 -m 0 -M 99999 -E -1 {{ username }}"
+ 
+    - name: check user expire
+      shell: chage -l "{{ username }}"
+      register: expire
+    
+    - name: Chage {{ username }} result 
+      debug:
+        msg: "{{ expire.stdout }}" 
+  
+    - name: Switch to {{ username }} using shell
+      become: no
+      shell: echo "{{ password }}" | su -c 'whoami' {{ username }}
+      no_log: true
+      ignore_errors: yes
+      register: su_result
+      tags:
+       - check-pass     
+    
+    - name: Success Login {{ username }}  
+      debug:
+        msg: "{{ username }} login success"
+      when: su_result.stdout ==  username 
+      tags:
+       - check-pass
+    
+    - name: Failure Login {{ username }}
+      debug:
+        msg: "{{ username }} login failure"
+      when: "'Authentication failure' in su_result.stderr"
+      tags:
+        - check-pass
